@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Website</title>
+  <link rel="stylesheet" type="text/css" href="personal.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-image">
+      <div class="header-text">
+        <p class = "header-subtext">Hi, I'm </p>
+        <h1>Ben Lear</h1>
+        <p class = "header-subtext">I like learning.</p>
+        <p class = "header-subtext">Here are some things I like to learn about:</p>
+      </div>
+
+    <div class="button-group">
+      <button class="button-science" onclick="document.location='./science/science.html'">Science</button>
+      <button class="button-data">Data Visualization</button>
+      <button class="button-baking">Baking</button>
+    </div>
+
+    </div>
+  </header>
+</body>
+</html>
+
+
+<script>
+  const buttonScience = document.querySelector(".button-science");
+  const buttonDataVis = document.querySelector(".button-data");
+  const buttonBaking  = document.querySelector(".button-baking");
+
+  const headerImage = document.querySelector(".header-image");
+
+  const img = new Image();
+    img.src = "Baking.png";
+
+  buttonScience.addEventListener("mouseover", function() {
+    headerImage.style.backgroundImage = "url('Science.png')";
+  });
+  buttonScience.addEventListener("mouseout", function() {
+    headerImage.style.backgroundImage = "url('Ben.png')";
+  });
+
+
+  buttonDataVis.addEventListener("mouseover", function() {
+    headerImage.style.backgroundImage = "url('DataVis.png')";
+  });
+  buttonDataVis.addEventListener("mouseout", function() {
+    headerImage.style.backgroundImage = "url('Ben.png')";
+  });
+
+
+  buttonBaking.addEventListener("mouseover", function() {
+    headerImage.style.backgroundImage = "url('Baking.png')";
+  });
+  buttonBaking.addEventListener("mouseout", function() {
+    headerImage.style.backgroundImage = "url('Ben.png')";
+  });
+</script>
