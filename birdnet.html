@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BirdNet Data Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .chart {
+            width: 100%;
+            max-width: 1000px;
+            margin: auto;
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shana's Birdnet</h1>
+    <h2>Today's bird detections</h2>
+    <div id="todaysBirdChart" class="chart"></div>
+    <h2>All-Time Bird Detections</h2>
+    <div id="allTimeBirdChart" class="chart"></div>
+    <script>
+        const interval = 0.25; // 15 minutes as a fraction of an hour
+        
+        function sortSpeciesByTotalDetections(speciesData) {
+            // Convert speciesData object into an array of [species, totalDetections] pairs
+            const speciesArray = Object.entries(speciesData).map(([species, detections]) => {
+                // Calculate total detections for each species
+                const totalDetections = Object.values(detections).reduce((sum, count) => sum + count, 0);
+                return [species, totalDetections];
+            });
+        
+            // Sort the array by total detections in descending order
+            speciesArray.sort((a, b) => b[1] - a[1]);
+        
+            // Convert sorted array back into an object
+            const sortedSpeciesData = {};
+            speciesArray.forEach(([species, _]) => {
+                sortedSpeciesData[species] = speciesData[species];
+            });
+        
+            return sortedSpeciesData;
+        }
+
+
+        function getTodaysDateFormatted() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based in JavaScript
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Usage
+        const todaysDate = getTodaysDateFormatted();
+
+        function filterDataByDateRange(data, startDate, endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999); // Set end time to the end of the day
+
+            return data.filter(item => {
+                const itemDate = new Date(item.Date);
+                return itemDate >= start && itemDate <= end;
+            });
+        }
+
+
+        function processDataForBarCharts(data) {
+            const speciesData = {};
+            data.forEach(item => {
+                const timeParts = item.Time.split(':');
+                const hour = parseInt(timeParts[0]);
+                const minutes = parseInt(timeParts[1]);
+                const timeInHours = hour + minutes / 60;
+                const timeBin = Math.floor(timeInHours / interval) * interval;
+
+                const species = item.Com_Name;
+                speciesData[species] = speciesData[species] || {};
+                speciesData[species][timeBin] = (speciesData[species][timeBin] || 0) + 1;
+            });
+
+            return speciesData;
+        }
+
+        // target should be the element id where you want the plot
+        function createAllTimeSubplots(speciesData, target) {
+            console.log(speciesData);
+            
+            const speciesNames = Object.keys(speciesData);
+            console.log(speciesNames.length);
+            
+            const traces = [];
+            let layout = {
+                title: speciesNames.length + ' species of birds detected!',
+                showlegend: false, // Remove the legend
+                grid: { rows: speciesNames.length, columns: 1, pattern: 'independent', rowspacing: 0.0,},
+                height: speciesNames.length * 60+50, // Increased height
+                annotations: [], // Initialize the annotations array
+                margin: { l: 175, r: 0, t: 25, b: 50 },
+
+            };
+
+            speciesNames.forEach((species, index) => {
+                const xValues = [];
+                const yValues = [];
+                for (let timeBin = 0; timeBin <= 24; timeBin += interval) {
+                    xValues.push(timeBin + interval/2);
+                    yValues.push(speciesData[species][timeBin] || 0);
+                }
+
+                traces.push({
+                    x: xValues,
+                    y: yValues,
+                    type: 'bar',
+                    name: species,
+                    marker: { color: 'rgba(54, 162, 235, 1)' }, // Uniform blue color
+                    xaxis: 'x' + (index + 1),
+                    yaxis: 'y' + (index + 1)
+                });
+
+                layout['xaxis' + (index + 1)] = {
+                    title: index === speciesNames.length - 1 ? 'Time of Day (hours)' : '',
+                    tickvals: [0, 6, 12, 18, 24],
+                    range: [0, 24],
+                    showgrid: true,
+                    showticklabels: false
+                };
+                layout['yaxis' + (index + 1)] = {
+                    //title: species,
+                    titlefont: {
+                        size: 10,
+                    },
+                    showticklabels: false,
+                    ticks: "",
+                    automargin: true,
+                    showgrid: false,
+                };
+
+                layout.annotations.push({
+                    text: species,
+                    x: 0,
+                    y: 0,//Math.max(...yValues),
+                    xref: 'x' + (index + 1),
+                    yref: 'y' + (index + 1),
+                    showarrow: false,
+                    ax: -5,
+                    ay: 0,
+                    xanchor: 'right',
+                    yanchor: 'bottom',
+                });
+                
+                //go back and make sure that the final plot has hours written
+            layout['xaxis' + speciesNames.length] = {
+                title: index === speciesNames.length - 1 ? 'Time of Day (hours)' : '',
+                tickvals: [0, 6, 12, 18, 24],
+                range: [0, 24],
+                showgrid: true,
+            };
+            
+            
+            });
+            console.log(layout)
+            
+            // now that you have everything, make the plot
+            Plotly.newPlot(target, traces, layout);
+        }
+
+        fetch('birds.json')
+            .then(response => response.json())
+            .then(data => {
+                const allTimeData = processDataForBarCharts(data);
+                const allTimeDataSorted = sortSpeciesByTotalDetections(allTimeData);
+                createAllTimeSubplots(allTimeDataSorted, 'allTimeBirdChart');
+
+                const todaysData = filterDataByDateRange(data, todaysDate, todaysDate);
+                if (todaysData.length > 0) {
+                    const todaysBirds = processDataForBarCharts(todaysData);
+                    const todaysBirdsSorted = sortSpeciesByTotalDetections(todaysBirds);
+                    createAllTimeSubplots(todaysBirdsSorted, 'todaysBirdChart');
+                } else {
+                    document.getElementById('todaysBirdChart').innerHTML = '<p>No birds yet today! (' + todaysDate + ')</p>';
+                    // Optionally, handle the case where there's no data for today
+                }
+            })
+            .catch(error => console.error('Error loading data:', error));
+
+    </script>
+</body>
+</html>
